@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Brain, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,21 +14,64 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/dashboard");
+      }
+    };
+    checkUser();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // TODO: Implement actual authentication
-    setTimeout(() => {
+    try {
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully logged in.",
+        });
+        navigate("/dashboard");
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name },
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+          },
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Account created!",
+          description: "You've successfully signed up.",
+        });
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
       toast({
-        title: isLogin ? "Welcome back!" : "Account created!",
-        description: isLogin 
-          ? "You've successfully logged in." 
-          : "Your account has been created successfully.",
+        title: "Error",
+        description: error.message || "An error occurred during authentication.",
+        variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
