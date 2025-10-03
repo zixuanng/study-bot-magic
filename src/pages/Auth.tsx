@@ -17,14 +17,11 @@ export default function Auth() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/dashboard");
       }
-    };
-    checkUser();
+    });
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +30,7 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -46,12 +43,14 @@ export default function Auth() {
         });
         navigate("/dashboard");
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { name },
             emailRedirectTo: `${window.location.origin}/dashboard`,
+            data: {
+              name: name,
+            },
           },
         });
 
